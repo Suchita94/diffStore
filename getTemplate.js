@@ -14,17 +14,25 @@ var diffInfo = {};
 // }
 var start = 0;
 var json = null;
+var idx = 0;
+var lim = 100;
+var diffInfo = {};
 async function load() {
-   var diffInfo = {};
+  
      await $.getJSON("/website/artifacts.json", function(dat) {})
-    .then(dat => {
+    .then(async function(dat) {
+      
       json = dat;
         console.log(json); // this will show the info it in firebug console
 
         for (let i = 0; i < start; i++) {
           json.shift();
         }
-         processJSON(json, 0, 100).then(() => {
+        idx = 0;
+        lim = 100;
+        var promise = await processJSON(json, idx, lim).then(() => {
+          console.log("returned...");
+          console.log(diffInfo);
            console.log("in then");
          
             var jsonStr = JSON.stringify(diffInfo);
@@ -59,21 +67,17 @@ async function load() {
   });
 }
 
-
-
-
-const processJSON = (json, idx, lim) => {
-
-  return new Promise (resolve=> {
+ async function processJSON(json, idx, lim) {
+    
     console.log("yay");
     console.log(json);
     const proxyurl = "https://cors-anywhere.herokuapp.com/";
     if (json.length && (idx < lim)) {
         let url = json[0].diff_url;
         try {
-         fetch(proxyurl + url)
+         await fetch(proxyurl + url)
             .then(response => response.text())
-            .then(contents => {
+            .then(async function(contents) {
             let wrap = document.createElement('div');
             let parser = new DOMParser();
             let doc = parser.parseFromString(contents, "text/html");
@@ -91,17 +95,18 @@ const processJSON = (json, idx, lim) => {
             
             wrap.appendChild(mainElements[0].cloneNode(true));
             diffInfo[url] = wrap.innerHTML;
-            }).then(dat => {
-                json.shift();
-                //console.log(diffInfo);
-                //$('#test').html(diffInfo[url]);
-                //return processJSON(json, idx++);
+            json.shift();
+            //console.log(diffInfo);
+            //$('#test').html(diffInfo[url]);
+            return await processJSON(json, idx++, lim);
+           
             }).catch(e => {
               console.log(e);
             });
           } catch (err) {
             console.log(err);
           }
+        } else {
+          return diffInfo;
         }
-          });
-}
+          }
